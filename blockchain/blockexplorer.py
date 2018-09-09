@@ -1,24 +1,70 @@
 """This module corresponds to functionality documented
-at https://blockchain.info/api/blockchain_api
-
+at https://smart.ccore.online/api/ @PacoBits - Poot Modify for free used in smartcash
 """
 
-from . import util
+from os.path import dirname, basename, isfile
+import glob
+from time import time
+from time import sleep
+modules = glob.glob(dirname(__file__)+"/*.py")
+__all__ = [ basename(f)[:-3] for f in modules if isfile(f) and not f.endswith('__init__.py')]
+
+import util
 import json
+import config
 from enum import Enum
-from past.builtins import basestring
+#from past.builtins import basestring
 
-def get_block(block_id, api_code=None):
+def log(cadena):
+    if config.DEBUG:
+        print(cadena)
+
+def logger(cadena):
+    #global config.OUTFILE
+    config.OUTFILE.write(cadena +"\n")
+    print(cadena)
+
+
+def get_latest_block(api_code=None):
+    """Get the latest block on the main chain.
+    :param str api_code: Blockchain.info API code (optional)
+    :return: an instance of :class:`LatestBlock` class
+    """
+
+    resource = '/api/getblockcount'
+    if api_code is not None:
+        resource += '?api_code=' + api_code
+    response = util.call_api(resource)
+    return response
+
+
+def get_block_hash(block_id, api_code=None):
     """Get a single block based on a block hash.
-
     :param str block_id: block hash to look up
     :param str api_code: Blockchain.info API code (optional)
     :return: an instance of :class:`Block` class
     """
 
-    resource = 'rawblock/' + block_id
+    resource = '/api/getblockhash?index=' + block_id
+    log (resource)
     if api_code is not None:
-        resource += '?api_code=' + api_code
+        resource += '&api_code=' + api_code
+    response = util.call_api(resource)
+    return response
+
+
+
+def get_block(block_hash, api_code=None):
+    """Get a single block based on a block hash.
+    :param str block_id: block hash to look up
+    :param str api_code: Blockchain.info API code (optional)
+    :return: an instance of :class:`Block` class
+    """
+
+    resource ='/api/getblock?hash=' + block_hash
+    log (resource)
+    if api_code is not None:
+        resource += '&api_code=' + api_code
     response = util.call_api(resource)
     json_response = json.loads(response)
     return Block(json_response)
@@ -26,228 +72,41 @@ def get_block(block_id, api_code=None):
 
 def get_tx(tx_id, api_code=None):
     """Get a single transaction based on a transaction hash.
-
     :param str tx_id: transaction hash to look up
     :param str api_code: Blockchain.info API code (optional)
     :return: an instance of :class:`Transaction` class
     """
-
-    resource = 'rawtx/' + tx_id
+    log(tx_id)
+    resource = '/api/getrawtransaction?txid=' + tx_id
     if api_code is not None:
         resource += '?api_code=' + api_code
     response = util.call_api(resource)
     json_response = json.loads(response)
     return Transaction(json_response)
 
-
-def get_block_height(height, api_code=None):
-    """Get an array of blocks at the specified height.
-
-    :param int height: block height to look up
-    :param str api_code: Blockchain.info API code (optional)
-    :return: an array of :class:`Block` objects
-    """
-
-    resource = 'block-height/{0}?format=json'.format(height)
-    if api_code is not None:
-        resource += '&api_code=' + api_code
-    response = util.call_api(resource)
-    json_response = json.loads(response)
-    return [Block(b) for b in json_response['blocks']]
+def get_address_smartcash(address):
+    global resource
+    resource=config.BASE_URL
+    log (resource)
+    return resource
 
 
-def get_address(address, filter=None, limit=None, offset=None, api_code=None):
-    """Get data for a single address including an address balance and list of relevant transactions.
 
-    :param str address: address(base58 or hash160) to look up
-    :param FilterType filter: the filter for transactions selection (optional)
-    :param int limit: limit number of transactions to display (optional)
-    :param int offset: number of transactions to skip when display (optional)
-    :param str api_code: Blockchain.info API code (optional)
-    :return: an instance of :class:`Address` class
-    """
-
-    resource = 'address/{0}?format=json'.format(address)
-    if filter is not None:
-        if isinstance(filter, FilterType):
-            resource += '&filter=' + str(filter.value)
-        else:
-            raise ValueError('Filter must be of FilterType enum')
-    if limit is not None:
-        resource += '&limit=' + str(limit)
-    if offset is not None:
-        resource += '&offset=' + str(offset)
-    if api_code is not None:
-        resource += '&api_code=' + api_code
-    response = util.call_api(resource)
-    json_response = json.loads(response)
-    return Address(json_response)
-
-
-def get_xpub(xpub, filter=None, limit=None, offset=None, api_code=None):
-    """Get data for a single xpub including balance and list of relevant transactions.
-
-    :param str xpub: address(xpub) to look up
-    :param FilterType filter: the filter for transactions selection (optional)
-    :param int limit: limit number of transactions to fetch (optional)
-    :param int offset: number of transactions to skip when fetch (optional)
-    :param str api_code: Blockchain.info API code (optional)
-    :return: an instance of :class:`Xpub` class
-    """
-
-    resource = 'multiaddr?active=' + xpub
-    if filter is not None:
-        if isinstance(filter, FilterType):
-            resource += '&filter=' + str(filter.value)
-        else:
-            raise ValueError('Filter must be of FilterType enum')
-    if limit is not None:
-        resource += '&limit=' + str(limit)
-    if offset is not None:
-        resource += '&offset=' + str(offset)
-    if api_code is not None:
-        resource += '&api_code=' + api_code
-    response = util.call_api(resource)
-    json_response = json.loads(response)
-    return Xpub(json_response)
-
-
-def get_multi_address(addresses, filter=None, limit=None, offset=None, api_code=None):
-    """Get aggregate summary for multiple addresses including overall balance, per address balance
-     and list of relevant transactions.
-
-    :param tuple addresses: addresses(xpub or base58) to look up
-    :param FilterType filter: the filter for transactions selection (optional)
-    :param int limit: limit number of transactions to fetch (optional)
-    :param int offset: number of transactions to skip when fetch (optional)
-    :param str api_code: Blockchain.info API code (optional)
-    :return: an instance of :class:`MultiAddress` class
-    """
-
-    if isinstance(addresses, basestring):
-        resource = 'multiaddr?active=' + addresses
-    else:
-        resource = 'multiaddr?active=' + '|'.join(addresses)
-    if filter is not None:
-        if isinstance(filter, FilterType):
-            resource += '&filter=' + str(filter.value)
-        else:
-            raise ValueError('Filter must be of FilterType enum')
-    if limit is not None:
-        resource += '&limit=' + str(limit)
-    if offset is not None:
-        resource += '&offset=' + str(offset)
-    if api_code is not None:
-        resource += '&api_code=' + api_code
-    response = util.call_api(resource)
-    json_response = json.loads(response)
-    return MultiAddress(json_response)
-
-
-def get_balance(addresses, filter=None, api_code=None):
+def get_balance(address, filter=None, api_code=None):
     """Get balances for each address provided.
-
     :param tuple addresses: addresses(xpub or base58) to look up
     :param FilterType filter: the filter for transactions selection (optional)
     :param str api_code: Blockchain.info API code (optional)
     :return: a dictionary of str, :class:`Balance`
     """
 
-    if isinstance(addresses, basestring):
-        resource = 'balance?active=' + addresses
-    else:
-        resource = 'balance?active=' + '|'.join(addresses)
-    if filter is not None:
-        if isinstance(filter, FilterType):
-            resource += '&filter=' + str(filter.value)
-        else:
-            raise ValueError('Filter must be of FilterType enum')
+    resource = '/ext/getbalance/' + address
+    log (resource)
     if api_code is not None:
         resource += '&api_code=' + api_code
     response = util.call_api(resource)
-    json_response = json.loads(response)
+    return response
 
-    return {k: Balance(v) for (k, v) in json_response.items()}
-
-
-def get_unspent_outputs(addresses, confirmations=None, limit=None, api_code=None):
-    """Get unspent outputs for a single address.
-
-    :param tuple addresses: addresses(xpub or base58) to look up
-    :param int confirmations: minimum confirmations to include (optional)
-    :param int limit: limit number of unspent outputs to fetch (optional)
-    :param str api_code: Blockchain.info API code (optional)
-    :return: an array of :class:`UnspentOutput` objects
-    """
-
-    if isinstance(addresses, basestring):
-        resource = 'unspent?active=' + addresses
-    else:
-        resource = 'unspent?active=' + '|'.join(addresses)
-    if confirmations is not None:
-        resource += '&confirmations=' + str(confirmations)
-    if limit is not None:
-        resource += '&limit=' + str(limit)
-    if api_code is not None:
-        resource += '&api_code=' + api_code
-    response = util.call_api(resource)
-    json_response = json.loads(response)
-    return [UnspentOutput(o) for o in json_response['unspent_outputs']]
-
-
-def get_latest_block(api_code=None):
-    """Get the latest block on the main chain.
-
-    :param str api_code: Blockchain.info API code (optional)
-    :return: an instance of :class:`LatestBlock` class
-    """
-
-    resource = 'latestblock'
-    if api_code is not None:
-        resource += '?api_code=' + api_code
-    response = util.call_api(resource)
-    json_response = json.loads(response)
-    return LatestBlock(json_response)
-
-
-def get_unconfirmed_tx(api_code=None):
-    """Get a list of currently unconfirmed transactions.
-
-    :param str api_code: Blockchain.info API code (optional)
-    :return: an array of :class:`Transaction` objects
-    """
-
-    resource = 'unconfirmed-transactions?format=json'
-    if api_code is not None:
-        resource += '&api_code=' + api_code
-    response = util.call_api(resource)
-    json_response = json.loads(response)
-    return [Transaction(t) for t in json_response['txs']]
-
-
-def get_blocks(time=None, pool_name=None, api_code=None):
-    """Get a list of blocks for a specific day or mining pool.
-    Both parameters are optional but at least one is required.
-
-    :param int time: time in milliseconds
-    :param str pool_name: name of the mining pool
-    :param str api_code: Blockchain.info API code (optional)
-    :return: an array of :class:`SimpleBlock` objects
-    """
-
-    resource = 'blocks/{0}?format=json'
-    if api_code is not None:
-        resource += '&api_code=' + api_code
-    if time is not None:
-        resource = resource.format(time)
-    elif pool_name is not None:
-        resource = resource.format(pool_name)
-    else:
-        resource = resource.format('')
-
-    response = util.call_api(resource)
-    json_response = json.loads(response)
-    return [SimpleBlock(b) for b in json_response['blocks']]
 
 
 class SimpleBlock:
@@ -328,79 +187,101 @@ class Xpub:
 
 class Input:
     def __init__(self, i):
-        obj = i.get('prev_out')
+        obj = i.get('TxId')
         if obj is not None:
             # regular TX
-            self.n = obj['n']
-            self.value = obj['value']
-            if 'addr' in obj:
-                self.address = obj['addr']
-            self.tx_index = obj['tx_index']
-            self.type = obj['type']
-            self.script = obj['script']
-            self.script_sig = i['script']
-            self.sequence = i['sequence']
-        else:
+        #self.n = obj['n']
+        #self.value = i['value']
+        #    if 'addr' in obj:
+        #        self.address = obj['addr']
+            self.TxId = i['TxId']
+            self.Address = i['Address']
+            self.Amount = i['Amount']
+
+        #    self.script_sig = i['script']
+        #    self.sequence = i['sequence']
+        #else:
             # coinbase TX
-            self.script_sig = i['script']
-            self.sequence = i['sequence']
+        #    self.script_sig = i['script']
+        #    self.sequence = i['sequence']
+
+
+class Addresses:
+    def __init__(self, a):
+        #self.Value = o['Value']
+        self.Address =a
 
 
 class Output:
     def __init__(self, o):
-        self.n = o['n']
-        self.value = o['value']
-        self.address = o.get('addr')
-        self.tx_index = o['tx_index']
-        self.script = o['script']
-        self.spent = o['spent']
-        self.addr_tag_link = None
-        self.addr_tag = None
-
-        if 'addr_tag_link' in o:
-            self.addr_tag_link = o['addr_tag_link']
-           
-        if 'addr_tag' in o:
-            self.addr_tag = o['addr_tag']
+        self.Value = o['Value']
+        self.Addresses = [Addresses(a) for a in o['ScriptPubKey']['Addresses']]
 
 
 class Transaction:
     def __init__(self, t):
-        self.double_spend = t.get('double_spend', False)
-        self.block_height = t.get('block_height')
-        self.time = t['time']
-        self.relayed_by = t['relayed_by']
-        self.hash = t['hash']
-        self.tx_index = t['tx_index']
-        self.version = t['ver']
-        self.size = t['size']
-        self.inputs = [Input(i) for i in t['inputs']]
-        self.outputs = [Output(o) for o in t['out']]
+        self.TxId = t.get('TxId')
+        self.BlockTime = t.get('BlockTime')
+        self.Time = t['Time']
+        self.Confirmations = t['Confirmations']
+        self.BlockHash = t['BlockHash']
+        self.totalIn=0;
+        self.totalOut=0;
+        self.inputs = [Input(i) for i in t['VinList']]
+        log ("------------------------")
 
-        if self.block_height is None:
-            self.block_height = -1
+        for i in self.inputs:
+            self.totalIn+=i.Amount
+        #log(self.totalIn)
+        #self.as=Input(i).Amount for i in self.inputs
+        self.outputs = [Output(o) for o in t['Vout']]
+        for i in self.outputs:
+            self.totalOut+=i.Value
+        #log(self.totalOut)
+        #if self.block_height is None:
+        #    self.block_height = -1
 
 
 class Block:
     def __init__(self, b):
-        self.hash = b['hash']
-        self.version = b['ver']
-        self.previous_block = b['prev_block']
-        self.merkle_root = b['mrkl_root']
-        self.time = b['time']
-        self.bits = b['bits']
-        self.fee = b['fee']
-        self.nonce = b['nonce']
-        self.n_tx = b['n_tx']
-        self.size = b['size']
-        self.block_index = b['block_index']
-        self.main_chain = b['main_chain']
-        self.height = b['height']
-        self.received_time = b.get('received_time', b['time'])
-        self.relayed_by = b.get('relayed_by')
-        self.transactions = [Transaction(t) for t in b['tx']]
-        for tx in self.transactions:
-            tx.block_height = self.height
+        log ("REpuesta:")
+        log (b)
+        self.BlockTime = b['BlockTime']
+        self.ConfirmationsClient = b['ConfirmationsClient']
+        self.TimeFromNowUtc = b['TimeFromNowUtc']
+        self.DiffBig = b['DiffBig']
+        self.DiffSmall = b['DiffSmall']
+        self.Hash = b['Hash']
+        self.Confirmations = b['Confirmations']
+        self.Size = b['Size']
+        self.Height = b['Height']
+        self.Version = b['Version']
+        self.MerkleRoot = b['MerkleRoot']
+        self.Difficulty = b['Difficulty']
+        self.ChainWork = b['ChainWork']
+        self.transactions=[]
+        self.totalIn=0;
+        self.totalOut=0;
+        self.PreviousBlockHash = b['PreviousBlockHash']
+
+        self.NextBlockHash = b['NextBlockHash']
+        self.Bits = b['Bits']
+        self.Flags = b['Flags']
+        self.Time = b['Time']
+        self.Nonce = b['Nonce']
+        log(b['Tx'])
+        for t in b['Tx']:
+            self.transactions.append(get_tx(t))
+        for i in self.transactions:
+            self.totalIn+=i.totalIn
+            self.totalOut+=i.totalOut
+            log (i.TxId)
+            log (i.totalIn)
+            log (i.totalOut)
+
+        #self.transactions =get_tx([Transaction(t) for t in get_tx(b['Tx'])][0])
+    #    for tx in self.transactions:
+    #        tx.block_height = self.height
 
 
 class Balance:
