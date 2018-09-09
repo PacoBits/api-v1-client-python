@@ -1,4 +1,4 @@
-# Blockchain API library (Python, v1)
+# Blockchain API library (Python, v1) - SmartCash
 
 Initial adapt from Blockexplorer Bitcoin Blockchain to Smartcash Blockchain
 
