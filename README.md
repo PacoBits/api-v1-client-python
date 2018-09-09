@@ -20,13 +20,15 @@ The module consists of the following sub-modules:
 
 All functions may raise exceptions caused by incorrectly passed parameters or other problems. If a call is rejected server-side, the `APIException` exception will be raised.
 
-### Connection timeouts
+### Config values
+DEBUG = True 'if you want see all procesing
+TIMEWAITTORETRY=30 'time to retry case server doesnot response
+BLOQUEINICIO=438286 'Block where start to search
+HASTABLOQUE=BLOQUEINICIO+50000 '#Until blocks
+VALORMAX=8000000 'Mark all blocks which amount is upper to VALORMAX
+BASE_URL = "https://smart.ccore.online" 'explorer
+TIMEOUT_URL = 100 ' timeout http request
+TIME_SLEEP_REQUEST=1 'Time to sleep case server ban for ddos
 
-It is possible to set arbitrary connection timeouts.
-
-```python
-from blockchain import util
-util.TIMEOUT = 5 #time out after 5 seconds
-```
 
 
